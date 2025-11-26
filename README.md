@@ -28,7 +28,7 @@ python -m http.server 8000
 
 ### 3. Open in browser
 ```
-http://localhost:8000/Lithuanian-word-game.html
+http://localhost:8000/zaidimas_lygiai.html
 ```
 
 ## How to Play

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Žodžių Žaidimas</title>
+<style>
+:root {
+  --border: #a573b8;
+  --text: #2b223b;
+  --muted: #6d647f;
+  --correct: #a5d3b5;
+  --present: #fbe08f;
+  --absent: #c9c4d6;
+  --key: #edd3f1;
+  --key-hover: #e3c0e8;
+  --submit: #b785c8;
+  --submit-hover: #a573b8;
+  --bg-gradient: linear-gradient(135deg, #f6e9f9 0%, #e8e3fc 50%, #f9eef9 100%);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: "Segoe UI", "Arial", sans-serif; color: var(--text); }
+
+body {
+  background: var(--bg-gradient);
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  min-height: 100vh; 
+  padding: 15px;
+}
+
+/* ============================================
+   MENU STYLE
+   ============================================ */
+.menu-screen {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 30px;
+  border-radius: 2px;
+  box-shadow: 0 15px 50px rgba(140, 100, 200, 0.2);
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+}
+
+.menu-title {
+  font-size: 32px;
+  color: var(--text);
+  margin: 0 0 10px 0;
+  font-weight: 800;
+}
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.menu-btn {
+  background: #fff;
+  border: 2px solid var(--key);
+  padding: 12px;
+  border-radius: 2px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.menu-btn span { font-size: 12px; color: var(--muted); font-weight: normal; margin-top: 4px; }
+
+.menu-btn:hover {
+  background: var(--key);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(165, 115, 184, 0.2);
+}
+
+/* ============================================
+   GAME SCREEN STYLE
+   ============================================ */
+.game-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;
+  min-width: 300px; 
+}
+
+.back-btn {
+  background: #ffffff;
+  color: var(--text);       
+  border: 2px solid var(--border); 
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;         
+  transition: all 0.2s;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  white-space: nowrap;
+}
+.back-btn:hover { background: var(--key); transform: translateY(-1px); }
+
+.level-indicator {
+  font-weight: 800;
+  color: var(--muted);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.game-container {
+  background: rgba(255,255,255,0.85);
+  padding: 15px 0;
+  border-radius: 2px;
+  box-shadow: 0 10px 30px rgba(100, 80, 150, 0.1);
+  display: flex;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.6);
+  width: 100%;
+  min-width: 320px; 
+}
+
+#canvasWrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+canvas {
+  display: block;
+  cursor: pointer;
+  width: 480px; 
+  max-width: 100%; 
+  height: auto;
+}
+
+/* ============================================
+   DIALOG STYLE
+   ============================================ */
+dialog {
+  border: none; border-radius: 16px;
+  padding: 30px; width: min(380px, 90vw);
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(50,40,80,0.25);
+  text-align: center;
+}
+dialog::backdrop { background: rgba(40,30,60,0.4); backdrop-filter: blur(2px); }
+.dialog-btn {
+  background: var(--submit); color: white; border: none;
+  padding: 12px 20px; border-radius: 12px; font-weight: bold; font-size: 16px;
+  cursor: pointer; display: block; margin: 15px auto 0; width: 100%;
+}
+.dialog-btn:hover { background: var(--submit-hover); }
+
+</style>
+</head>
+<body>
+
+<div id="menuScreen" class="menu-screen">
+  <h1 class="menu-title">Žodžių Žaidimas</h1>
+  <div id="loadingStatus" style="color:var(--muted)">Įkeliami žodžiai...</div>
+  <div class="level-grid" id="levelGrid"></div>
+  <button class="dialog-btn" id="btnShowInstructions" style="margin-top:20px; border-radius: 2px; background:#be9ac3;">Kaip žaisti?</button>
+</div>
+
+<div id="gameScreen" class="game-screen">
+  <div class="header-bar">
+    <button class="back-btn" onclick="goBackToMenu()">← MENIU</button>
+    <div class="level-indicator" id="currentLevelTitle">Lygis</div>
+  </div>
+  
+  <div class="game-container">
+    <div id="canvasWrapper"></div>
+  </div>
+</div>
+
+<dialog id="endDialog">
+  <div id="endText" style="font-size:18px; line-height:1.6;"></div>
+  <button class="dialog-btn" id="btnRestart">Žaisti dar kartą</button>
+  <button class="dialog-btn" onclick="goBackToMenu()" style="background:transparent; color:var(--muted); border:2px solid var(--absent); margin-top:10px;">Meniu</button>
+</dialog>
+
+<dialog id="instructionsDialog">
+  <h2 style="margin-top:0; color:var(--text); font-size:24px;">Kaip žaisti?</h2>
+  <div style="text-align:left; line-height:1.8; color:var(--text); font-size:15px;">
+    <p style="margin:10px 0;"><strong>Tikslas:</strong> Atspėti paslėptą žodį per 6 bandymus</p>
+    
+    <p style="margin:15px 0 5px 0;"><strong>Spalvų reikšmės:</strong></p>
+    <div style="margin:8px 0;">
+      <span style="display:inline-block; width:20px; height:20px; background:#a5d3b5; border-radius:4px; vertical-align:middle; margin-right:8px;"></span>
+      <strong>Žalia</strong> - raidė teisingoje vietoje
+    </div>
+    <div style="margin:8px 0;">
+      <span style="display:inline-block; width:20px; height:20px; background:#fbe08f; border-radius:4px; vertical-align:middle; margin-right:8px;"></span>
+      <strong>Geltona</strong> - raidė yra žodyje, bet ne toje vietoje
+    </div>
+    <div style="margin:8px 0;">
+      <span style="display:inline-block; width:20px; height:20px; background:#c9c4d6; border-radius:4px; vertical-align:middle; margin-right:8px;"></span>
+      <strong>Pilka</strong> - raidės nėra žodyje
+    </div>
+  </div>
+  <button class="dialog-btn" id="btnCloseInstructions">Supratau!</button>
+</dialog>
+
+<script>
+    (async () => {
+        /******************************************
+         KEYBOARD AND LETTER CONFIGURATION
+         ******************************************/
+        const LT_ROWS = [
+          ["Ą","Č","Ę","Ė","Į","Š","Ų","Ū","Ž"],
+          ["Q","W","E","R","T","Y","U","I","O","P"],
+          ["A","S","D","F","G","H","J","K","L"],
+          ["Z","C","V","B","N","M"]
+        ];
+      
+        const LETTERS = "AĄBCČDEĘĖFGHIĮYJKLMNOPRSŠTUŲŪVZŽ".split("");
+        const LT_MAP = {'1':'Ą','2':'Č','3':'Ę','4':'Ė','5':'Į','6':'Š','7':'Ų','8':'Ū','9':'Ž'};
+      
+        /******************************************
+         COLOR SCHEMES
+         ******************************************/
+        const COLORS = {
+          correct: '#a5d3b5',  // Teisingoje vietoje
+          present: '#fbe08f',  // Yra žodyje, bet kitoje vietoje
+          absent: '#c9c4d6'    // Nėra žodyje
+        };
+      
+        /******************************************
+         GAME STATUS VARIABLES
+         ******************************************/
+        let WORD_DATA, currentLevel, secret;
+        let grid = [], currentRow = 0, currentCol = 0;
+        let keyStates = {}, hoveredKey = null;
+        let gameStopped = false, canvas, ctx, keyboardKeys;
+        
+        /******************************************
+         DIMENSIONS AND CONSTANTS
+         ******************************************/
+        const ROWS = 6;
+        const FIXED_CANVAS_WIDTH = 480;
+        const TILE_SIZE = 42, TILE_GAP = 5;
+        const KEY_WIDTH = 38, KEY_HEIGHT = 38, KEY_GAP = 4, ROW_GAP = 5;
+        
+        let COLS, BOARD_X, BOARD_Y, KEYBOARD_Y;
+        let animationFrameId;
+      
+        /******************************************
+         UPLOADING WORD DATA 
+         Loads words from a JSON file and 
+         groups by number of letters
+         ******************************************/
+        async function loadWordData() {
+          try {
+            // Stiprus cache busting - keletas metodų
+            const cacheBuster = `v=${Date.now()}-${Math.random()}`;
+            const response = await fetch(`zodziai.json?${cacheBuster}`, {
+              cache: 'no-store',  // Nurodo naršyklei nenaudoti cache
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            let list = Array.isArray(data) ? data : data.zodziai;
+            list = list.map(w => w.toUpperCase());
+      
+            const byLength = {};
+            list.forEach(w => {
+              if (w.length >= 3 && w.length <= 8) {
+                (byLength[w.length] ||= []).push(w);
+              }
+            });
+      
+            WORD_DATA = Object.keys(byLength).sort((a,b)=>a-b).map(len => ({
+              letterCount: +len,
+              words: [...new Set(byLength[len])]
+            }));
+      
+            return true;
+          } catch (error) {
+            console.error('Klaida įkeliant žodžius:', error);
+            document.getElementById('loadingStatus').textContent = "Klaida įkeliant žodžius! " + error.message;
+            return false;
+          }
+        }
+      
+        /******************************************
+         MENU INITIALIZATION 
+         Creates level buttons based on uploaded 
+         word data
+         ******************************************/
+        function initMenu() {
+          const gridDiv = document.getElementById('levelGrid');
+          gridDiv.innerHTML = '';
+          document.getElementById('loadingStatus').remove();
+      
+          WORD_DATA.forEach(level => {
+            const btn = document.createElement('button');
+            btn.className = 'menu-btn';
+            btn.innerHTML = `${level.letterCount} RAIDĖS`;
+            btn.onclick = () => startGame(level);
+            gridDiv.appendChild(btn);
+          });
+        }
+      
+        /******************************************
+         START OF THE GAME
+         Starts the game with the selected level
+         ******************************************/
+        window.startGame = level => {
+          currentLevel = level;
+          document.getElementById('menuScreen').style.display = 'none';
+          document.getElementById('gameScreen').style.display = 'flex';
+          document.getElementById('currentLevelTitle').textContent =
+            `${level.letterCount} RAIDŽIŲ LYGIS`;
+      
+          setupCanvas();
+          resetGameLogic();
+          calcDimensions();
+      
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+          loop();
+        };
+      
+        /******************************************
+         RETURN TO MENU
+         Stops the game and returns to the main menu
+         ******************************************/
+        window.goBackToMenu = () => {
+          gameStopped = true;
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+          document.getElementById('endDialog').close();
+          
+          document.getElementById('gameScreen').style.display = 'none';
+          document.getElementById('menuScreen').style.display = 'block';
+        };
+      
+        /******************************************
+         GAME REBOOT 
+         Reloads the game with a new word
+         ******************************************/
+        document.getElementById('btnRestart').onclick = () => {
+          document.getElementById('endDialog').close();
+          resetGameLogic();
+        };
+      
+        /******************************************
+         RESTORATION OF GAME LOGIC
+         Selects a new secret word and clears the
+         playing field
+         ******************************************/
+        function resetGameLogic() {
+          secret = currentLevel.words[Math.random() * currentLevel.words.length | 0];
+          grid = Array.from({length: ROWS}, () => Array(currentLevel.letterCount).fill(''));
+          currentRow = currentCol = 0;
+          gameStopped = false;
+          keyStates = {};
+          hoveredKey = null;
+        }
+      
+        /******************************************
+         CANVAS SETUP
+         Creates a canvas element and adds
+         event listeners
+         ******************************************/
+        function setupCanvas() {
+          const wrapper = document.getElementById('canvasWrapper');
+          wrapper.innerHTML = '';
+      
+          canvas = document.createElement('canvas');
+          canvas.id = 'gameCanvas';
+          ctx = canvas.getContext('2d');
+          wrapper.appendChild(canvas);
+      
+          canvas.addEventListener('mousemove', onMouseMove);
+          canvas.addEventListener('click', onClick);
+          canvas.addEventListener('mouseleave', () => hoveredKey=null);
+        }
+      
+        /******************************************
+         LAYOUT CALCULATIONS
+         Calculates positions for all items
+         in the canvas according to the current level
+         ******************************************/
+        function calcDimensions() {
+          COLS = currentLevel.letterCount;
+          const boardWidth = COLS * TILE_SIZE + (COLS - 1) * TILE_GAP;
+          BOARD_X = (FIXED_CANVAS_WIDTH - boardWidth) / 2;
+          BOARD_Y = 10;
+      
+          const boardHeight = ROWS * TILE_SIZE + (ROWS - 1) * TILE_GAP;
+          KEYBOARD_Y = BOARD_Y + boardHeight + 25;
+          const keyHeightTotal = LT_ROWS.length * KEY_HEIGHT + (LT_ROWS.length - 1) * ROW_GAP + KEY_HEIGHT + ROW_GAP;
+      
+          canvas.width = FIXED_CANVAS_WIDTH;
+          canvas.height = KEYBOARD_Y + keyHeightTotal + 10;
+      
+          buildKeyboard();
+        }
+      
+        /******************************************
+         KEYBOARD CONSTRUCTION
+         Creates all keys on the keyboard
+         positions and sizes
+         ******************************************/
+        function buildKeyboard() {
+          keyboardKeys = [];
+          let y = KEYBOARD_Y;
+      
+          LT_ROWS.forEach(row => {
+            const rowWidth = row.length * KEY_WIDTH + (row.length - 1) * KEY_GAP;
+            let x = (FIXED_CANVAS_WIDTH - rowWidth) / 2;
+            row.forEach(letter => {
+              keyboardKeys.push({letter, x, y, width: KEY_WIDTH, height: KEY_HEIGHT});
+              x += KEY_WIDTH + KEY_GAP;
+            });
+            y += KEY_HEIGHT + ROW_GAP;
+          });
+      
+          const sw = 110, bw = 70;
+          const ax = (FIXED_CANVAS_WIDTH - (sw + KEY_GAP + bw)) / 2;
+          keyboardKeys.push({letter:'PATEIKTI', x:ax, y, width:sw, height:KEY_HEIGHT, isAction:true});
+          keyboardKeys.push({letter:'⌫', x:ax+sw+KEY_GAP, y, width:bw, height:KEY_HEIGHT});
+        }
+      
+        /******************************************
+         DRAWING CYCLE
+         Executes drawing in every frame
+         ******************************************/
+        function loop() {
+          draw();
+          animationFrameId = requestAnimationFrame(loop);
+        }
+      
+        /****************************************** 
+         BASIC DRAWING METHOD 
+         Draws the entire playing field and keyboard
+         ******************************************/
+        function draw() {
+          ctx.clearRect(0,0,canvas.width,canvas.height);
+      
+          for (let r=0; r<ROWS; r++)
+            for (let c=0; c<COLS; c++)
+              drawTile(r,c);
+      
+          keyboardKeys.forEach(drawKey);
+        }
+      
+        /******************************************
+         PLATE DRAWING
+         Draws one tile on the playing field with 
+         letter and color
+         ******************************************/
+        function drawTile(r,c) {
+          const x = BOARD_X + c*(TILE_SIZE+TILE_GAP);
+          const y = BOARD_Y + r*(TILE_SIZE+TILE_GAP);
+      
+          const letter = grid[r][c];
+          const s = keyStates[`tile-${r}-${c}`];
+          ctx.beginPath();
+          ctx.roundRect(x,y,TILE_SIZE,TILE_SIZE,8);
+      
+          ctx.fillStyle = s ? COLORS[s] : "rgba(255,255,255,0.6)";
+          ctx.fill();
+          if (!s) { ctx.lineWidth = 2; ctx.strokeStyle = "#a573b8"; ctx.stroke(); }
+      
+          if (letter) {
+            ctx.fillStyle = "#2b223b";
+            ctx.font = "bold 22px Segoe UI, Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(letter, x+TILE_SIZE/2, y+TILE_SIZE/2+2);
+          }
+        }
+      
+        /******************************************
+         KEY DRAWING 
+         Draws keyboard key with color
+         and text
+         ******************************************/
+        function drawKey(k) {
+          const s = keyStates[k.letter];
+          ctx.beginPath();
+          ctx.roundRect(k.x,k.y,k.width,k.height,6);
+      
+          if (k.isAction) {
+            ctx.fillStyle = hoveredKey===k.letter ? "#a573b8" : "#b785c8";
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+          } else {
+            ctx.fillStyle = s ? COLORS[s] : (hoveredKey===k.letter ? "#CA9BCF" : "#edd3f1");
+            ctx.fill();
+            ctx.fillStyle = "#2b223b";
+          }
+      
+          ctx.font = k.isAction ? "bold 12px Arial" : "bold 15px Arial";
+          ctx.textAlign="center";
+          ctx.textBaseline="middle";
+          ctx.fillText(k.letter, k.x+k.width/2, k.y+k.height/2+1);
+        }
+      
+        /******************************************
+         KEY FINDING
+         Finds the keyboard key under the mouse
+         Coordinates
+         ******************************************/
+        function getKey(x,y){
+          return keyboardKeys.find(k=>
+            x>=k.x&&x<=k.x+k.width&&y>=k.y&&y<=k.y+k.height
+          );
+        }
+      
+        /******************************************
+         MOUSE MOVEMENT PROCESSING 
+         Updates the hover state when the mouse moves 
+         above the keyboard
+         ******************************************/
+        function onMouseMove(e){
+          const pos = getMousePos(e);
+          const k = getKey(pos.x,pos.y);
+          hoveredKey = k?.letter || null;
+          canvas.style.cursor = hoveredKey ? "pointer" : "default";
+        }
+      
+        /******************************************
+         CLICK PROCESSING 
+         Processes mouse clicks on 
+         Keyboard
+         ******************************************/
+        function onClick(e){
+          if (gameStopped) return;
+          const pos = getMousePos(e);
+          const k = getKey(pos.x,pos.y);
+          if (k) processInput(k.letter);
+        }
+      
+        /******************************************
+         GETTING THE MOUSE POSITION 
+         Converts mouse coordinates to canvas 
+         Coordinates
+         ******************************************/
+        function getMousePos(evt){
+          const r = canvas.getBoundingClientRect();
+          return {
+            x:(evt.clientX-r.left)*(canvas.width/r.width),
+            y:(evt.clientY-r.top)*(canvas.height/r.height)
+          };
+        }
+      
+        /******************************************
+         KEYBOARD EVENTS LISTENER 
+         Processes physical keyboard clicks
+         ******************************************/
+        document.addEventListener('keydown', e=>{
+          if(gameStopped) return;
+          const k = e.key==="Enter" ? "PATEIKTI"
+                  : e.key==="Backspace" ? "⌫"
+                  : LT_MAP[e.key] || e.key.toUpperCase();
+          if(LETTERS.includes(k)||k==="PATEIKTI"||k==="⌫") processInput(k);
+        });
+      
+        /******************************************
+         INPUT PROCESSING
+         Handles all input events 
+         (letters, deletion, presentation)
+         ******************************************/
+        function processInput(k){
+          if(k==="⌫" && currentCol>0){
+            grid[currentRow][--currentCol] = "";
+          } else if(k==="PATEIKTI"){
+            submitGuess();
+          } else if(LETTERS.includes(k) && currentCol<COLS){
+            grid[currentRow][currentCol++] = k;
+          }
+        }
+      
+        /******************************************
+         GUESS SUBMISSION 
+         Checks the typed word and updates 
+         colors with animation
+         ******************************************/
+        function submitGuess(){
+          if(currentCol<COLS) return;
+          const guess = grid[currentRow].join("");
+          const res = checkWord(guess, secret);
+      
+          res.forEach((st,i)=>{
+            const letter = guess[i];
+            if ((keyStates[letter] || "") !== "correct") {
+              keyStates[letter] = st;
+            }
+          });
+        
+          res.forEach((st,i)=>{
+            setTimeout(()=>{
+              keyStates[`tile-${currentRow}-${i}`] = st;
+        
+              if(i===COLS-1){
+                guess===secret ? endGame(true)
+                              : currentRow===ROWS-1 ? endGame(false)
+                              : (currentRow++,currentCol=0);
+              }
+            }, i*120);
+          });
+        }
+      
+        /******************************************
+         WORD CHECK 
+         Compares guessing to a secret word and 
+         returns the color array
+         ******************************************/
+        function checkWord(guess,target){
+          const r = Array(COLS).fill("absent"),
+                t = target.split(""),
+                g = guess.split("");
+      
+          for(let i=0;i<COLS;i++)
+            if(g[i]===t[i]){r[i]="correct";g[i]=t[i]=null;}
+      
+          for(let i=0;i<COLS;i++)
+            if(g[i] && t.includes(g[i])){
+              r[i]="present";t[t.indexOf(g[i])]=null;
+            }
+      
+          return r;
+        }
+      
+        /******************************************
+         END OF THE GAME 
+         Displays the end dialogue with the result
+         ******************************************/
+        function endGame(win){
+          gameStopped=true;
+          setTimeout(()=>{
+            const dialog=document.getElementById('endDialog');
+            const txt=document.getElementById('endText');
+            txt.innerHTML = win
+              ? `<strong>Puiku!</strong><br>Žodis:<br><h2>${secret}</h2>`
+              : `<strong>Nepavyko...</strong><br>Buvo:<br><h2>${secret}</h2>`;
+            dialog.showModal();
+          },800);
+        }
+      
+        /******************************************
+         PROGRAM INITIALIZATION 
+         Loads data and launches menus
+         ******************************************/
+        const ok = await loadWordData();
+        if(ok) {
+          initMenu();
+          
+          document.getElementById('btnCloseInstructions').onclick = () => {
+            document.getElementById('instructionsDialog').close();
+          };
+          
+          document.getElementById('btnShowInstructions').onclick = () => {
+            document.getElementById('instructionsDialog').showModal();
+          };
+          
+          const hasSeenInstructions = localStorage.getItem('hasSeenInstructions');
+          if (!hasSeenInstructions) {
+            document.getElementById('instructionsDialog').showModal();
+            localStorage.setItem('hasSeenInstructions', 'true');
+          }
+        }
+      })();      
+</script>
+</body>
+</html>
